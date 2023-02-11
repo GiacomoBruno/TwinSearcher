@@ -467,6 +467,12 @@ void generator_filler(globals::set& S, globals::wset& work_set)
     temporary_results.clear();
 
 
+    if constexpr (O != config::OPTIMIZATION_LEVELS::NO_OPTIMIZATION )
+    {
+        if(!CONFIG.FinisherCompletelyNaive)
+            conf =  constant_range_settings{ 10000 };
+    }
+
     while(!work_set.empty())
     {
         benchmark b;
