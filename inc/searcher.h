@@ -446,7 +446,7 @@ void generator_filler(globals::set& S, globals::wset& work_set)
     benchmark b;
     b.start_bench();
 
-    conf =  constant_range_settings{ S.size() / 4 };
+    conf =  constant_range_settings{ S.size() / 8 };
     for(auto x = S.begin(); x != S.end(); x++)
     {
         CONFIG.ThreadPool.push_task([&S, &temporary_results, &mtx, &conf, &print_mutex, &processed_numbers] (iterator x) { 
