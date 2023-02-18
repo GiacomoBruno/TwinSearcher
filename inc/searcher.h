@@ -1,588 +1,333 @@
 #pragma once
 
-#include <optional>
-#include <mutex>
-#include <iostream>
-#include <filesystem>
-#include <thread>
-#include <atomic>
-#include <variant>
-#include "globals.h"
 #include "benchmark.h"
+#include "globals.h"
+#include "searcher_configuration.h"
 #include "splitfile.h"
-using iterator = typename globals::set::const_iterator;
 
-#define FORWARD_CALCS(x, y)                                                                         \
-	do                                                                                              \
-	{                                                                                               \
-		m1 = xp1 * (y);                                                                             \
-		delta = (y) - (x);                                                                          \
-		d = m1 % delta;                                                                             \
-	} while(false)
+#include <atomic>
+#include <filesystem>
+#include <iostream>
+#include <mutex>
+#include <optional>
+#include <thread>
+#include <variant>
 
-#define BACKWARD_CALCS(x, z)                                                                        \
-	do                                                                                              \
-	{                                                                                               \
-		m1 = (z) + 1;                                                                               \
-		m1 *= (x);                                                                                  \
-		delta = (x) - (z);                                                                          \
-		d = m1 % delta;                                                                             \
-	} while(false)
+using namespace globals;
 
+static constexpr size_t CHUNK_SIZE = 500;
 
-//    NO_OPTIMIZATION = 0,
-//    CONSTANT_RANGE_OPTIMIZATION = 1,
-//    GLOBAL_K_OPTIMIZATION = 2,
-//    VARIABLE_RANGE_OPTIMIZATION = 3
-struct no_settings {};
-struct constant_range_settings
+set           S{};
+configuration conf{};
+
+#define FORWARD_CALCS(x, y)                                                                                                                          \
+    do                                                                                                                                               \
+    {                                                                                                                                                \
+        m1    = xp1 * (y);                                                                                                                           \
+        delta = (y) - (x);                                                                                                                           \
+        d     = m1 % delta;                                                                                                                          \
+    }                                                                                                                                                \
+    while (false)
+
+#define BACKWARD_CALCS(x, z)                                                                                                                         \
+    do                                                                                                                                               \
+    {                                                                                                                                                \
+        m1 = (z) + 1;                                                                                                                                \
+        m1 *= (x);                                                                                                                                   \
+        delta = (x) - (z);                                                                                                                           \
+        d     = m1 % delta;                                                                                                                          \
+    }                                                                                                                                                \
+    while (false)
+
+struct generator_object
 {
-    size_t range;
+    generator_object() = default;
+
+    template <config::OPTIMIZATION_LEVELS O>
+    void generate_twins();
+
+    template <config::OPTIMIZATION_LEVELS O>
+    void generate_twins_forward_only();
+
+    bool has_work() const
+    {
+        return elements_to_work_on > 0;
+    }
+
+    std::set<integer> results{};
+    integer           d{};
+    integer           delta{};
+    integer           m1{};
+    work_set_iterator current_element{};
+    size_t            elements_to_work_on{};
 };
 
-struct global_k_settings
+// NO OPTIMIZATION
+
+template <>
+void generator_object::generate_twins<config::OPTIMIZATION_LEVELS::NO_OPTIMIZATION>()
 {
-    double starting_k;
-    double optimized_k;
-    double current_k;
-};
-using configuration = std::variant<no_settings, constant_range_settings, global_k_settings>;
+#ifdef STANDARD_SET
+    auto x = *current_element;
+#else
+    auto x = S.find(*current_element);
+#endif
 
-struct arguments
-{
-    iterator        x;
-    globals::set&   S;
-    globals::set&   R;
-    std::mutex&     M;
-    configuration&  C;
+    integer xp1 = *x + 1;
 
-    arguments(iterator _x, globals::set& s, globals::set& r, std::mutex& m, configuration& c) : x{_x}, S{s}, R{r}, M{m}, C{c} {} 
-};
-template<config::OPTIMIZATION_LEVELS O>
-void generate_twins(arguments& args);
-
-template<config::OPTIMIZATION_LEVELS O>
-void generate_twins_forward_only(arguments& args);
-
-template<>
-void generate_twins<config::OPTIMIZATION_LEVELS::NO_OPTIMIZATION>(arguments& args)
-{
-    globals::integer d, delta, m1;
-    auto [x, S, R, M, C] = args;
-    globals::integer xp1 = *x + 1;
-
-    for(auto iter = std::next(x); iter != S.end(); ++iter)
+    for (auto iter = std::next(x); iter != S.end(); ++iter)
     {
         auto y = *iter;
         FORWARD_CALCS(*x, y);
 
-        if(d == 0) [[unlikely]]
+        if (d == 0)
         {
-            globals::integer potential_twin = (m1 / delta) - 1;
-            if(!CONTAINS(S, potential_twin))
+            integer potential_twin = (m1 / delta) - 1;
+            if (!CONTAINS(S, potential_twin))
             {
-                std::unique_lock l{M};
-                R.insert(potential_twin);
+                results.insert(potential_twin);
             }
         }
     }
 
-    if(x == S.begin()) return;
+    if (x == S.begin())
+        goto end;
 
     BACKWARD_CALCS(*x, *S.begin());
-    if(d == 0) [[unlikely]]
+
+    if (d == 0)
     {
-        globals::integer potential_twin = (m1 / delta) - 1;
-        if(!CONTAINS(S, potential_twin))
+        integer potential_twin = (m1 / delta) - 1;
+        if (!CONTAINS(S, potential_twin))
         {
-            std::unique_lock l{M};
-            R.insert(potential_twin);
+            results.insert(potential_twin);
         }
     }
 
-    for(auto iter = std::prev(x); iter != S.begin(); --iter)
+    for (auto iter = std::prev(x); iter != S.begin(); --iter)
     {
         BACKWARD_CALCS(*x, *iter);
 
-        if(d == 0) [[unlikely]]
+        if (d == 0)
         {
-            globals::integer potential_twin = (m1 / delta) - 1;
-            if(!CONTAINS(S, potential_twin))
+            integer potential_twin = (m1 / delta) - 1;
+            if (!CONTAINS(S, potential_twin))
             {
-                std::unique_lock l{M};
-                R.insert(potential_twin);
+                results.insert(potential_twin);
             }
         }
     }
-    
-
-        
-    
+end:
+    current_element++;
+    elements_to_work_on--;
 }
 
-template<>
-void generate_twins_forward_only<config::OPTIMIZATION_LEVELS::NO_OPTIMIZATION>(arguments& args)
+template <>
+void generator_object::generate_twins_forward_only<config::OPTIMIZATION_LEVELS::NO_OPTIMIZATION>()
 {
-    globals::integer d, delta, m1;
-    auto [x, S, R, M, C] = args;
+#ifdef STANDARD_SET
+    auto x = *current_element;
+#else
+    auto x = S.find(*current_element);
+#endif
     globals::integer xp1 = *x + 1;
-
-    for(auto iter = std::next(x); iter != S.end(); ++iter)
+    for (auto iter = std::next(x); iter != S.end(); ++iter)
     {
         auto y = *iter;
         FORWARD_CALCS(*x, y);
 
-        if(d == 0) [[unlikely]]
+        if (d == 0)
         {
             globals::integer potential_twin = (m1 / delta) - 1;
-            if(!CONTAINS(S, potential_twin))
+            if (!CONTAINS(S, potential_twin))
             {
-                std::unique_lock l{M};
-                R.insert(potential_twin);
+                results.insert(potential_twin);
             }
         }
     }
+
+    current_element++;
+    elements_to_work_on--;
 }
 
-template<>
-void generate_twins<config::OPTIMIZATION_LEVELS::CONSTANT_RANGE_OPTIMIZATION>(arguments& args)
+// CONSTANT RANGE OPTIMIZATION
+template <>
+void generator_object::generate_twins<config::OPTIMIZATION_LEVELS::CONSTANT_RANGE_OPTIMIZATION>()
 {
-    globals::integer d, delta, m1;
-    size_t counter = 0;
-    auto [x, S, R, M, C] = args;
-    size_t range = std::get<constant_range_settings>(C).range;
+#ifdef STANDARD_SET
+    auto x = *current_element;
+#else
+    auto x = S.find(*current_element);
+#endif
+    auto            range = std::get<constant_range_settings>(conf).range;
+    decltype(range) i     = 0;
+    integer         xp1   = *x + 1;
 
-    globals::integer xp1 = *x + 1;
-    for(auto iter = std::next(x); iter != S.end() && counter < range; ++iter)
+    for (auto iter = std::next(x); i < range && iter != S.end(); ++iter, ++i)
     {
-        counter++;
         auto y = *iter;
         FORWARD_CALCS(*x, y);
 
-        if(d == 0) [[unlikely]]
+        if (d == 0)
         {
-            globals::integer potential_twin = (m1 / delta) - 1;
-            if(!CONTAINS(S, potential_twin))
+            integer potential_twin = (m1 / delta) - 1;
+            if (!CONTAINS(S, potential_twin))
             {
-                std::unique_lock l{M};
-                R.insert(potential_twin);
+                results.insert(potential_twin);
             }
         }
     }
-    
 
-    if(x == S.begin())  return;
-        
-    
+    if (x == S.begin())
+        goto end;
+
     BACKWARD_CALCS(*x, *S.begin());
-    if(d == 0) [[unlikely]]
+
+    if (d == 0)
     {
-        globals::integer potential_twin = (m1 / delta) - 1;
-        if(!CONTAINS(S, potential_twin))
+        integer potential_twin = (m1 / delta) - 1;
+        if (!CONTAINS(S, potential_twin))
         {
-            std::unique_lock l{M};
-            R.insert(potential_twin);
+            results.insert(potential_twin);
         }
     }
-
-    counter = 0;
-    for(auto iter = std::prev(x); iter != S.begin() && counter < range; --iter)
+    i = 0;
+    for (auto iter = std::prev(x); i < range && iter != S.begin(); --iter, ++i)
     {
-        counter++;
         BACKWARD_CALCS(*x, *iter);
 
-        if(d == 0) [[unlikely]]
+        if (d == 0)
         {
-            globals::integer potential_twin = (m1 / delta) - 1;
-            if(!CONTAINS(S, potential_twin))
+            integer potential_twin = (m1 / delta) - 1;
+            if (!CONTAINS(S, potential_twin))
             {
-                std::unique_lock l{M};
-                R.insert(potential_twin);
+                results.insert(potential_twin);
             }
         }
     }
-    
+end:
+    current_element++;
+    elements_to_work_on--;
 }
 
-template<>
-void generate_twins_forward_only<config::OPTIMIZATION_LEVELS::CONSTANT_RANGE_OPTIMIZATION>(arguments& args)
+template <>
+void generator_object::generate_twins_forward_only<config::OPTIMIZATION_LEVELS::CONSTANT_RANGE_OPTIMIZATION>()
 {
-    globals::integer d, delta, m1;
-    size_t counter = 0;
-    auto [x, S, R, M, C] = args;
-    size_t range = std::get<constant_range_settings>(C).range;
-
-    globals::integer xp1 = *x + 1;
-    for(auto iter = std::next(x); iter != S.end() && counter < range; ++iter)
+#ifdef STANDARD_SET
+    auto x = *current_element;
+#else
+    auto x = S.find(*current_element);
+#endif
+    auto             range = std::get<constant_range_settings>(conf).range;
+    decltype(range)  i     = 0;
+    globals::integer xp1   = *x + 1;
+    for (auto iter = std::next(x); i < range && iter != S.end(); ++iter, ++i)
     {
-        counter++;
         auto y = *iter;
         FORWARD_CALCS(*x, y);
 
-        if(d == 0) [[unlikely]]
+        if (d == 0)
         {
             globals::integer potential_twin = (m1 / delta) - 1;
-            if(!CONTAINS(S, potential_twin))
+            if (!CONTAINS(S, potential_twin))
             {
-                std::unique_lock l{M};
-                R.insert(potential_twin);
+                results.insert(potential_twin);
             }
         }
     }
+
+    current_element++;
+    elements_to_work_on--;
 }
 
-
-template<>
-void generate_twins<config::OPTIMIZATION_LEVELS::GLOBAL_K_OPTIMIZATION>(arguments& args)
+// GENERATE FUNCTION
+template <config::OPTIMIZATION_LEVELS O>
+void generate()
 {
-    globals::integer d, delta, m1, maxy, maxz;
-    auto [x, S, R, M, C] = args;
-    double k = std::get<global_k_settings>(C).current_k;
+    wset work_set{};
 
-    size_t counter = 0;
-    {
-        globals::floating f{*x};                                                            
-        f *= k;                                                             
-        maxy = f; 
-    }
-    {
-        globals::floating f{*x};                                                            
-	    f *= (2.0 - k);
-	    maxz = f;                                                                        
-    }
+    std::cout << "SMOOTHNESS: " << CONFIG.Smoothness << std::endl;
+    std::cout << "THREAD COUNT: " << CONFIG.ThreadPool.get_thread_count() << std::endl;
+    std::cout << "\nEXECUTING: " << GetOptimizationLevel(O) << std::endl;
 
-    size_t forward_range = std::distance(x, S.lower_bound(maxy));
-    size_t backward_range = std::distance(S.upper_bound(maxz), x);
-
-    globals::integer xp1 = *x + 1;
-    for(auto iter = std::next(x); iter != S.end() && counter < forward_range; ++iter)
-    {
-        counter++;
-        auto y = *iter;
-        FORWARD_CALCS(*x, y);
-
-        if(d == 0) [[unlikely]]
-        {
-            globals::integer potential_twin = (m1 / delta) - 1;
-            if(!CONTAINS(S, potential_twin))
-            {
-                std::unique_lock l{M};
-                R.insert(potential_twin);
-            }
-        }
-    }
-    
-    if(x == S.begin()) return;
-        
-    BACKWARD_CALCS(*x, *S.begin());
-    if(d == 0) [[unlikely]]
-    {
-        globals::integer potential_twin = (m1 / delta) - 1;
-        if(!CONTAINS(S, potential_twin))
-        {
-            std::unique_lock l{M};
-            R.insert(potential_twin);
-        }
-    }
-
-    counter = 0;
-
-    for(auto iter = std::prev(x); iter != S.begin() && counter < backward_range; --iter)
-    {
-        counter++;
-        BACKWARD_CALCS(*x, *iter);
-
-        if(d == 0) [[unlikely]]
-        {
-            globals::integer potential_twin = (m1 / delta) - 1;
-            if(!CONTAINS(S, potential_twin))
-            {
-                std::unique_lock l{M};
-                R.insert(potential_twin);
-            }
-        }
-    }
-}
-
-template<>
-void generate_twins_forward_only<config::OPTIMIZATION_LEVELS::GLOBAL_K_OPTIMIZATION>(arguments& args)
-{
-    globals::integer d, delta, m1, maxy, maxz;
-    auto [x, S, R, M, C] = args;
-    double k = std::get<global_k_settings>(C).current_k;
-
-    size_t counter = 0;
-    {
-        globals::floating f{*x};                                                            
-        f *= k;                                                             
-        maxy = f; 
-    }
-    {
-        globals::floating f{*x};                                                            
-	    f *= (2.0 - k);
-	    maxz = f;                                                                        
-    }
-
-    size_t forward_range = std::distance(x, S.lower_bound(maxy));
-    size_t backward_range = std::distance(S.upper_bound(maxz), x);
-
-    globals::integer xp1 = *x + 1;
-    for(auto iter = std::next(x); iter != S.end() && counter < forward_range; ++iter)
-    {
-        counter++;
-        auto y = *iter;
-        FORWARD_CALCS(*x, y);
-
-        if(d == 0) [[unlikely]]
-        {
-            globals::integer potential_twin = (m1 / delta) - 1;
-            if(!CONTAINS(S, potential_twin))
-            {
-                std::unique_lock l{M};
-                R.insert(potential_twin);
-            }
-        }
-    }
-    
-    if(x == S.begin()) return;
-        
-    BACKWARD_CALCS(*x, *S.begin());
-    if(d == 0) [[unlikely]]
-    {
-        globals::integer potential_twin = (m1 / delta) - 1;
-        if(!CONTAINS(S, potential_twin))
-        {
-            std::unique_lock l{M};
-            R.insert(potential_twin);
-        }
-    }
-
-    counter = 0;
-
-    for(auto iter = std::prev(x); iter != S.begin() && counter < backward_range; --iter)
-    {
-        counter++;
-        BACKWARD_CALCS(*x, *iter);
-
-        if(d == 0) [[unlikely]]
-        {
-            globals::integer potential_twin = (m1 / delta) - 1;
-            if(!CONTAINS(S, potential_twin))
-            {
-                std::unique_lock l{M};
-                R.insert(potential_twin);
-            }
-        }
-    }
-}
-
-
-void after_completion(const globals::set& S)
-{
-    std::string output_fd = "./result/";
-	std::string output_fl = CONFIG.OutputFile + "_" + std::to_string(CONFIG.Smoothness);
-
-	std::filesystem::create_directories(output_fd);
-	splitfile file(output_fd, output_fl, CONFIG.MaxFileSize * 1000000ull);
-	file.init();
-
-	if(CONFIG.MaxBitSizeToSave == 1024)
-	{
-		for(auto x : S)
-		{
-			file << x.get_str() << "\n";
-		}
-
-		return;
-	}
-	int smallest_to_save = static_cast<int>(CONFIG.MinBitSizeToSave);
-	int biggest_to_save = static_cast<int>(CONFIG.MaxBitSizeToSave);
-	for(auto x : S)
-	{
-		int size = mpz_sizeinbase(x.get_mpz_t(), 2);
-		if(size >= smallest_to_save && size <= biggest_to_save)
-		{
-			file << (std::string(x.get_str()) + std::string("\n"));
-		}
-	}
-}
-
-void printProgress(double percentage)
-{
-	static constexpr auto PBSTR = "================================================================"
-								  "======================";
-	static constexpr auto PBWIDTH = 86;
-
-	int val = static_cast<int>(percentage * 100);
-	int lpad = static_cast<int>(percentage * PBWIDTH);
-	int rpad = PBWIDTH - lpad;
-
-	printf("\r|%.*s%*s|", lpad, PBSTR, rpad, "");
-	fflush(stdout);
-}
-
-template<config::OPTIMIZATION_LEVELS O>
-void generator_filler(globals::set& S, globals::wset& work_set)
-{
-    std::mutex mtx;
-    globals::set temporary_results{};
-    size_t processed_numbers = 0;
-    size_t numbers_to_process = S.size();
-    std::mutex print_mutex;
-    configuration conf;
-    
-    auto progress_bar = [&processed_numbers, &numbers_to_process]() {
-        while(processed_numbers != numbers_to_process)
-        {
-            printProgress(processed_numbers / static_cast<double>(numbers_to_process));
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
-        printProgress(1.0);
-        std::cout << "\r|                         ||  FILLING PROCESS COMPLETED  ||                            |" << std::endl;
-    };
-
-    std::thread progress_task(progress_bar);
-
-    benchmark b;
-    b.start_bench();
-
-    conf =  constant_range_settings{ S.size() / 8 };
-    for(auto x = S.begin(); x != S.end(); x++)
-    {
-        CONFIG.ThreadPool.push_task([&S, &temporary_results, &mtx, &conf, &print_mutex, &processed_numbers] (iterator x) { 
-            arguments pack(x, S, temporary_results, mtx, conf);
-            generate_twins_forward_only<config::OPTIMIZATION_LEVELS::CONSTANT_RANGE_OPTIMIZATION>(pack); 
-            std::unique_lock l(print_mutex);
-            processed_numbers++;
-            }, x);
-    }
-    CONFIG.ThreadPool.wait_for_tasks();
-    for(auto& b : temporary_results)
-    {
-        work_set.push_back(S.insert(b).first);
-    }
-    b.conclude_bench();
-    progress_task.join();
-    table_line_string(temporary_results.size(), b.seconds_passed(), S.size());
-    temporary_results.clear();
-
-
-    if constexpr (O != config::OPTIMIZATION_LEVELS::NO_OPTIMIZATION )
-    {
-        if(!CONFIG.FinisherCompletelyNaive)
-            conf =  constant_range_settings{ 10000 };
-    }
-
-    while(!work_set.empty())
-    {
-        benchmark b;
-        b.start_bench();
-        for(const auto& x : work_set)
-        {
-            CONFIG.ThreadPool.push_task([&S, &temporary_results, &mtx, &conf] (iterator x) { 
-                arguments pack(x, S, temporary_results, mtx, conf);
-                generate_twins<config::OPTIMIZATION_LEVELS::CONSTANT_RANGE_OPTIMIZATION>(pack); 
-                }, x);
-        }
-
-        CONFIG.ThreadPool.wait_for_tasks();
-        work_set.clear();
-        for(auto& b : temporary_results)
-        {
-            work_set.push_back(S.insert(b).first);
-        }
-        b.conclude_bench();
-        table_line_string(temporary_results.size(), b.seconds_passed(), S.size());
-        temporary_results.clear();
-    }
-
-
-
-}
-
-template<config::OPTIMIZATION_LEVELS O>
-void generator()
-{
-    globals::set S{};
-    globals::wset work_set{};
-    std::mutex mtx;
-
-    globals::set temporary_results{};
-
-	std::cout << "\nEXECUTING: " << globals::GetOptimizationLevel(O) << std::endl;
-	std::cout << "SMOOTHNESS: " << CONFIG.Smoothness << std::endl;
-	std::cout << "THREAD COUNT: " << CONFIG.ThreadPool.get_thread_count() << std::endl;
     table_header_string();
 
     benchmark btot{};
     btot.start_bench();
-    for(int i = 0; i < CONFIG.Smoothness; i++)
+
+    // INSERT INITIAL ELEMENTS
+    for (int i = 0; i < CONFIG.Smoothness; i++)
     {
-        auto inserted = S.insert(i+1);
+        auto inserted = S.insert(integer(i + 1));
+#ifdef STANDARD_SET
         work_set.push_back(inserted.first);
+#else
+        work_set.push_back(i + 1);
+#endif
     }
 
-    configuration conf;
-    if constexpr (O == config::OPTIMIZATION_LEVELS::NO_OPTIMIZATION)
+    // ACTUAL ALGORITHM
+    while (!work_set.empty())
     {
-        conf = no_settings{};
-    }
-    else if constexpr(O == config::OPTIMIZATION_LEVELS::CONSTANT_RANGE_OPTIMIZATION)
-    {
-        conf = constant_range_settings{static_cast<size_t>(CONFIG.RangeCurrent)};
-    }
-    else if constexpr(O == config::OPTIMIZATION_LEVELS::GLOBAL_K_OPTIMIZATION)
-    {
-        conf = global_k_settings{2.0, CONFIG.KCurrent, 2.0};
-    }
-
-    bool filler_executed = !CONFIG.RunAdditionalNaiveFinisher;
-
-    while(!work_set.empty())
-    {
-        
-        if constexpr (O == config::OPTIMIZATION_LEVELS::GLOBAL_K_OPTIMIZATION)
-        {
-            if(S.size() < 100000)
-            {
-                conf = global_k_settings{2.0, CONFIG.KCurrent, CONFIG.KCurrent};
-            }
-        }
         benchmark b;
         b.start_bench();
-        for(const auto& x : work_set)
+
+        conf                 = load_configuration<O>(S.size());
+        size_t current_chunk = 0;
+
+        auto              total_chunks = (work_set.size() / CHUNK_SIZE) + ((work_set.size() % CHUNK_SIZE) != 0);
+        generator_object *generators   = new generator_object[total_chunks]{};
+
+        for (decltype(total_chunks) i = 0; i < total_chunks; i++)
         {
-            CONFIG.ThreadPool.push_task([&S, &temporary_results, &mtx, &conf] (iterator x) { 
-                arguments pack(x, S, temporary_results, mtx, conf);
-                generate_twins<O>(pack); 
-                }, x);
+            CONFIG.ThreadPool.push_task(
+                [total_chunks, &generators, &work_set](decltype(i) index)
+                {
+                    generators[index].current_element     = std::next(work_set.begin(), index * CHUNK_SIZE);
+                    generators[index].elements_to_work_on = index != (total_chunks - 1) ? CHUNK_SIZE : work_set.size() % CHUNK_SIZE;
+                },
+                i);
+        }
+        CONFIG.ThreadPool.wait_for_tasks();
+
+        for (size_t i = 0; i < total_chunks; i++)
+        {
+            CONFIG.ThreadPool.push_task(
+                [&generators](size_t i)
+                {
+                    while (generators[i].has_work())
+                        generators[i].generate_twins<O>();
+                },
+                i);
         }
 
         CONFIG.ThreadPool.wait_for_tasks();
         work_set.clear();
-        for(auto& b : temporary_results)
+        size_t count_newly_found = 0;
+        for (int i = 0; i < total_chunks; i++)
         {
-            work_set.push_back(S.insert(b).first);
-        }
-        b.conclude_bench();
-        table_line_string(temporary_results.size(), b.seconds_passed(), S.size());
-        temporary_results.clear();
-        
-        if constexpr (O != config::OPTIMIZATION_LEVELS::NO_OPTIMIZATION)
-        {
-            if(!filler_executed && work_set.empty())
+            for (auto &x : generators[i].results)
             {
-                filler_executed = true;
-                if(CONFIG.FinisherCompletelyNaive)
-                    generator_filler<config::OPTIMIZATION_LEVELS::NO_OPTIMIZATION>(S, work_set);
-                else 
-                    generator_filler<O>(S, work_set);
+                if (auto insertion = S.insert(x); insertion.second)
+                {
+                    count_newly_found++;
+#ifdef STANDARD_SET
+                    work_set.push_back(insertion.first);
+#else
+                    work_set.push_back(x);
+#endif
+                }
             }
         }
+
+        delete[] generators;
+
+        b.conclude_bench();
+
+        table_line_string(count_newly_found, b.seconds_passed(), S.size());
     }
 
     btot.conclude_bench();
     std::cout << "FOUND: " << S.size() << std::endl;
     std::cout << "Total time taken: " << btot.seconds_passed() << " seconds" << std::endl;
-    after_completion(S);
 }
