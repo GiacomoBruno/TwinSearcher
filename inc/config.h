@@ -10,9 +10,9 @@ namespace config {
     enum class OPTIMIZATION_LEVELS
     {
         NO_OPTIMIZATION = 0,
-        CONSTANT_RANGE_OPTIMIZATION = 1,
-        GLOBAL_K_OPTIMIZATION = 2,
-        VARIABLE_RANGE_OPTIMIZATION = 3
+        CONSTANT_RANGE = 1,
+        GLOBAL_K = 2,
+        VARIABLE_RANGE = 3
     };
 
     class Configuration

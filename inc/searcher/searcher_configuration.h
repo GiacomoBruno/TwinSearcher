@@ -29,13 +29,13 @@ configuration load_configuration(size_t size)
     {
         return no_settings{};
     }
-    else if constexpr (O == config::OPTIMIZATION_LEVELS::CONSTANT_RANGE_OPTIMIZATION)
+    else if constexpr (O == config::OPTIMIZATION_LEVELS::CONSTANT_RANGE)
     {
         return constant_range_settings{ static_cast<size_t>(CONFIG.RangeCurrent) };
     }
-    else if constexpr (O == config::OPTIMIZATION_LEVELS::GLOBAL_K_OPTIMIZATION)
+    else if constexpr (O == config::OPTIMIZATION_LEVELS::GLOBAL_K)
     {
-        if (size < 100000)
+        if (size > 100000)
         {
             return global_k_settings{ 2.0, CONFIG.KCurrent, CONFIG.KCurrent };
         }
@@ -43,5 +43,9 @@ configuration load_configuration(size_t size)
         {
             return global_k_settings{ 2.0, CONFIG.KCurrent, 2.0 };
         }
+    }
+    else
+    {
+        return {};
     }
 }

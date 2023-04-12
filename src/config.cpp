@@ -46,13 +46,13 @@ void LoadConfigFile()
 				CONFIG.OptimizationType = static_cast<int>(OPTIMIZATION_LEVELS::NO_OPTIMIZATION);
 			else if(value == "constant_range_optimization")
 				CONFIG.OptimizationType =
-					static_cast<int>(OPTIMIZATION_LEVELS::CONSTANT_RANGE_OPTIMIZATION);
+					static_cast<int>(OPTIMIZATION_LEVELS::CONSTANT_RANGE);
 			else if(value == "variable_range_optimization")
 				CONFIG.OptimizationType =
-					static_cast<int>(OPTIMIZATION_LEVELS::VARIABLE_RANGE_OPTIMIZATION);
+					static_cast<int>(OPTIMIZATION_LEVELS::VARIABLE_RANGE);
 			else if(value == "global_k_optimization")
 				CONFIG.OptimizationType =
-					static_cast<int>(OPTIMIZATION_LEVELS::GLOBAL_K_OPTIMIZATION);
+					static_cast<int>(OPTIMIZATION_LEVELS::GLOBAL_K);
 		}
 		else if(name == "smoothness")
 			CONFIG.Smoothness = std::stoi(value);
@@ -85,13 +85,13 @@ void LoadConfigFile()
                 << static_cast<int>(OPTIMIZATION_LEVELS::NO_OPTIMIZATION);
         std::cout << "\n\t"
                 << "constant range:   "
-                << static_cast<int>(OPTIMIZATION_LEVELS::CONSTANT_RANGE_OPTIMIZATION);
+                << static_cast<int>(OPTIMIZATION_LEVELS::CONSTANT_RANGE);
         std::cout << "\n\t"
                 << "global k:         "
-                << static_cast<int>(OPTIMIZATION_LEVELS::GLOBAL_K_OPTIMIZATION);
+                << static_cast<int>(OPTIMIZATION_LEVELS::GLOBAL_K);
         std::cout << "\n\t"
                 << "variable range:   "
-                << static_cast<int>(OPTIMIZATION_LEVELS::VARIABLE_RANGE_OPTIMIZATION);
+                << static_cast<int>(OPTIMIZATION_LEVELS::VARIABLE_RANGE);
         std::cout << "\nchoose: ";
         std::cin >> CONFIG.OptimizationType;
 

@@ -25,11 +25,11 @@ inline std::string GetOptimizationLevel(config::OPTIMIZATION_LEVELS level)
     {
     case O::NO_OPTIMIZATION:
         return "No optimizations";
-    case O::CONSTANT_RANGE_OPTIMIZATION:
+    case O::CONSTANT_RANGE:
         return std::string("Constant range: ") + std::to_string(CONFIG.RangeCurrent);
-    case O::GLOBAL_K_OPTIMIZATION:
+    case O::GLOBAL_K:
         return std::string("Global K: ") + std::to_string(CONFIG.KCurrent);
-    case O::VARIABLE_RANGE_OPTIMIZATION:
+    case O::VARIABLE_RANGE:
         return "Variable range";
     }
     return "";

@@ -89,7 +89,6 @@ class btree_set
     typedef BTree<key_type, value_type, key_of_value, key_compare, traits, false, allocator_type> btree_impl;
 
     //! Function class comparing two value_type keys.
-    typedef typename btree_impl::value_compare value_compare;
 
     //! Size type used to count keys
     typedef typename btree_impl::size_type size_type;
@@ -203,25 +202,6 @@ class btree_set
     void swap(btree_set &from)
     {
         std::swap(tree_, from.tree_);
-    }
-
-    //! \}
-
-   public:
-    //! \name Key and Value Comparison Function Objects
-    //! \{
-
-    //! Constant access to the key comparison object sorting the B+ tree
-    key_compare key_comp() const
-    {
-        return tree_.key_comp();
-    }
-
-    //! Constant access to a constructed value_type comparison object. required
-    //! by the STL
-    value_compare value_comp() const
-    {
-        return tree_.value_comp();
     }
 
     //! \}

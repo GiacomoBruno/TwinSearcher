@@ -5,10 +5,8 @@ namespace searcher
 using optimization = config::OPTIMIZATION_LEVELS;
 using namespace globals;
 
-extern configuration conf;
-
 template <>
-void twin_generator::generate_forward<optimization::CONSTANT_RANGE_OPTIMIZATION>(x_type &x) noexcept
+void twin_generator::generate_forward<optimization::CONSTANT_RANGE>(x_type &x) noexcept
 {
     auto            range = std::get<constant_range_settings>(gb::instance().conf).range;
     decltype(range) i     = 0;
@@ -33,7 +31,7 @@ void twin_generator::generate_forward<optimization::CONSTANT_RANGE_OPTIMIZATION>
 }
 
 template <>
-void twin_generator::generate_backward<optimization::CONSTANT_RANGE_OPTIMIZATION>(x_type &x) noexcept
+void twin_generator::generate_backward<optimization::CONSTANT_RANGE>(x_type &x) noexcept
 {
     auto            range = std::get<constant_range_settings>(gb::instance().conf).range;
     decltype(range) i     = 0;
