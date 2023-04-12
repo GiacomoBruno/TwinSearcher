@@ -40,6 +40,7 @@ endif ()
 target_sources(twinsmooth_searcher
         PRIVATE ${PROJECT_SOURCE_DIR}/src/searcher/generator.cpp
         PRIVATE ${PROJECT_SOURCE_DIR}/src/searcher/range_generator.cpp
+        PRIVATE ${PROJECT_SOURCE_DIR}/src/searcher/global_k_generator.cpp
         PRIVATE ${PROJECT_SOURCE_DIR}/src/stopwatch.cpp
         PRIVATE ${PROJECT_SOURCE_DIR}/src/config.cpp
         PRIVATE ${PROJECT_SOURCE_DIR}/src/splitfile.cpp
