@@ -35,15 +35,16 @@ else ()
 endif ()
 
 
-
-
 target_sources(twinsmooth_searcher
-        PRIVATE ${PROJECT_SOURCE_DIR}/src/benchmark.cpp
+        PRIVATE ${PROJECT_SOURCE_DIR}/src/searcher/generator.cpp
+        PRIVATE ${PROJECT_SOURCE_DIR}/src/searcher/range_generator.cpp
+        PRIVATE ${PROJECT_SOURCE_DIR}/src/stopwatch.cpp
         PRIVATE ${PROJECT_SOURCE_DIR}/src/config.cpp
         PRIVATE ${PROJECT_SOURCE_DIR}/src/splitfile.cpp
         PRIVATE ${PROJECT_SOURCE_DIR}/src/output.cpp
         PRIVATE ${PROJECT_SOURCE_DIR}/src/main.cpp
         )
+
 target_include_directories(twinsmooth_searcher
         PUBLIC ${PROJECT_SOURCE_DIR}/inc
         PUBLIC ${PROJECT_SOURCE_DIR}/third_party

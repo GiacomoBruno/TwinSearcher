@@ -1,15 +1,15 @@
 #pragma once
 
+#include "../config.h"
+#include "../output.h"
+#include "allocator.h"
+
+#include <btree/fc_btree.h>
 #include <gmpxx.h>
 #include <memory>
 #include <set>
+#include <tlx/btree_set.hpp>
 #include <vector>
-//#include "tlx/container/btree_set.hpp"
-#include "allocator.h"
-#include "btree/fc_btree.h"
-#include "config.h"
-#include "output.h"
-#include "tlx/container/btree_set.hpp"
 
 #define CONTAINS(_s_, _x_) (_s_.find(_x_) != _s_.end())
 
@@ -17,7 +17,8 @@ namespace globals
 {
 using integer  = mpz_class;
 using floating = mpf_class;
-std::string GetOptimizationLevel(config::OPTIMIZATION_LEVELS level)
+
+inline std::string GetOptimizationLevel(config::OPTIMIZATION_LEVELS level)
 {
     using O = config::OPTIMIZATION_LEVELS;
     switch (level)
@@ -33,6 +34,7 @@ std::string GetOptimizationLevel(config::OPTIMIZATION_LEVELS level)
     }
     return "";
 }
+
 template <typename Key, typename Value>
 struct optimized_btree_traits
 {
@@ -51,28 +53,38 @@ struct compare
     }
 };
 
+#define STL_TREE 0
+#define TLX_TREE 1
+#define FC_TREE  2
+
 #define TREE_STANDARD 0
 #define TREE_TLX      1
 #define TREE_FC       2
 
 #define TREE_TYPE TREE_TLX
 
-#if TREE_TYPE == 0
-#    define STANDARD_SET
-#endif
+#if TREE_TYPE == STL_TREE
+using set    = std::set<integer>;
+using wset   = std::vector<typename set::const_iterator>;
+using x_type = set::const_iterator;
+#    define GET_X(ce) ce
 
-#ifdef STANDARD_SET
-using set  = std::set<integer>;
-using wset = std::vector<typename set::const_iterator>;
-#else
-#    if TREE_TYPE == 1
-using set  = tlx::btree_set<integer, compare, optimized_btree_traits<integer, integer> >;
-#    else
-using set = frozenca::BTreeSet<integer>;
-#    endif
-using wset = std::vector<integer>;
+#elif TREE_TYPE == TLX_TREE
+
+using set    = tlx::btree_set<integer, compare, optimized_btree_traits<integer, integer> >;
+using wset   = std::vector<integer>;
+using x_type = typename globals::set::const_iterator;
+#    define GET_X(ce) gb::instance().S.find(*ce)
+#elif TREE_TYPE == FC_TREE
+
+using set    = frozenca::BTreeSet<integer>;
+using wset   = std::vector<integer>;
+using x_type = typename globals::set::const_iterator;
+#    define GET_X(ce) gb::instance().S.find(ce)
+
 #endif
 
 using iterator          = typename globals::set::const_iterator;
 using work_set_iterator = typename globals::wset::const_iterator;
+
 } // namespace globals

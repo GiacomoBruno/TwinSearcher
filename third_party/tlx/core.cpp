@@ -8,17 +8,18 @@
  * All rights reserved. Published under the Boost Software License, Version 1.0
  ******************************************************************************/
 
-#include <tlx/die/core.hpp>
-
 #include <atomic>
 #include <iostream>
 #include <sstream>
+#include <tlx/core.hpp>
 
-namespace tlx {
+namespace tlx
+{
 
 /******************************************************************************/
 
-static std::atomic<bool> s_die_with_exception {
+static std::atomic<bool> s_die_with_exception
+{
 #if TLX_DIE_WITH_EXCEPTION
     true
 #else
@@ -26,30 +27,37 @@ static std::atomic<bool> s_die_with_exception {
 #endif
 };
 
-void die_with_message(const std::string& msg) {
-    if (s_die_with_exception) {
+void die_with_message(const std::string &msg)
+{
+    if (s_die_with_exception)
+    {
         throw DieException(msg);
     }
-    else {
+    else
+    {
         std::cerr << msg << std::endl;
         std::terminate();
     }
 }
 
-void die_with_message(const char* msg, const char* file, size_t line) {
+void die_with_message(const char *msg, const char *file, size_t line)
+{
     std::ostringstream oss;
     oss << msg << " @ " << file << ':' << line;
     die_with_message(oss.str());
 }
 
-void die_with_message(const std::string& msg, const char* file, size_t line) {
+void die_with_message(const std::string &msg, const char *file, size_t line)
+{
     return die_with_message(msg.c_str(), file, line);
 }
 
-DieException::DieException(const std::string& message)
-    : std::runtime_error(message) { }
+DieException::DieException(const std::string &message) : std::runtime_error(message)
+{
+}
 
-bool set_die_with_exception(bool b) {
+bool set_die_with_exception(bool b)
+{
     return s_die_with_exception.exchange(b);
 }
 
