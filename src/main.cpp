@@ -16,6 +16,7 @@ int main()
         break;
     case config::OPTIMIZATION_LEVELS::GLOBAL_K_OPTIMIZATION:
         break;
+    default: break;
     }
 
     return 0;
