@@ -1,7 +1,5 @@
 #include "searcher/algorithm.h"
 
-#include <filesystem>
-
 int main()
 {
     config::LoadConfigFile();
