@@ -75,7 +75,7 @@ struct TreePairRef<BTreePair<T, U>>
 };
 
 template <typename TreePair>
-using PairRefType = TreePairRef<TreePair>::type;
+using PairRefType = typename TreePairRef<TreePair>::type;
 
 template <typename T, typename U>
 bool operator==(const BTreePair<T, U> &lhs, const PairRefType<BTreePair<T, U>> &rhs) noexcept
@@ -361,12 +361,12 @@ requires(Fanout >= 2) class BTreeBase
     template <typename IterTraits>
     struct BTreeIterator
     {
-        using difference_type   = IterTraits::difference_type;
-        using value_type        = IterTraits::value_type;
-        using pointer           = IterTraits::pointer;
-        using reference         = IterTraits::reference;
-        using iterator_category = IterTraits::iterator_category;
-        using iterator_concept  = IterTraits::iterator_concept;
+        using difference_type   = typename IterTraits::difference_type;
+        using value_type        = typename IterTraits::value_type;
+        using pointer           = typename IterTraits::pointer;
+        using reference         = typename IterTraits::reference;
+        using iterator_category = typename IterTraits::iterator_category;
+        using iterator_concept  = typename IterTraits::iterator_concept;
 
         Node  *node_ = nullptr;
         attr_t index_;
@@ -2483,8 +2483,8 @@ BTreeBase<K, V, Fanout, Comp, AllowDup, AllocTemplate> join(
     BTreeBase<K, V, Fanout, Comp, AllowDup, AllocTemplate> &&tree_right) requires std::is_constructible_v<V, std::remove_cvref_t<T_>>
 {
     using Tree              = BTreeBase<K, V, Fanout, Comp, AllowDup, AllocTemplate>;
-    using Node              = Tree::node_type;
-    using Proj              = Tree::Proj;
+    using Node              = typename Tree::node_type;
+    using Proj              = typename Tree::Proj;
     constexpr bool is_disk_ = Tree::is_disk_;
 
     V mid_value{ std::forward<T_>(raw_value) };
