@@ -26,9 +26,10 @@ using namespace globals;
     }                                                                                                                                                \
     while (false)
 
+
 template <>
 void twin_generator::generate_forward<optimization::GLOBAL_K>(x_type &x) noexcept
-{
+{ 
     mpz_class max = std::get<global_k_settings>(gb::instance().conf).current_k * *x;
     integer         xp1 = *x + 1;
     auto           &S   = gb::instance().S;
@@ -55,10 +56,13 @@ void twin_generator::generate_forward<optimization::GLOBAL_K>(x_type &x) noexcep
 template <>
 void twin_generator::generate_backward<optimization::GLOBAL_K>(x_type &x) noexcept
 {
-    mpz_class max = (2.0 - std::get<global_k_settings>(gb::instance().conf).current_k) * *x;
+    auto curk = std::get<global_k_settings>(gb::instance().conf).current_k;
+
+    mpz_class max = *x / curk ;
     auto           &S     = gb::instance().S;
     auto max_iter = S.upper_bound(max);
-    for (auto iter = std::prev(x); iter != max_iter && iter != S.begin(); --iter)
+    globals::x_type iter;
+    for (iter = std::prev(x); iter != max_iter && iter != S.begin(); --iter)
     {
         m1 = (*iter) + 1;
         m1 *= (*x);
@@ -73,6 +77,7 @@ void twin_generator::generate_backward<optimization::GLOBAL_K>(x_type &x) noexce
             }
         }
     }
+
 }
 
 } // namespace searcher
